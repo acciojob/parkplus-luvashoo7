@@ -3,7 +3,6 @@ package com.driver.services.impl;
 import com.driver.model.Payment;
 import com.driver.model.PaymentMode;
 import com.driver.model.Reservation;
-import com.driver.model.Spot;
 import com.driver.repository.PaymentRepository;
 import com.driver.repository.ReservationRepository;
 import com.driver.services.PaymentService;
@@ -19,42 +18,31 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public Payment pay(Integer reservationId, int amountSent, String mode) throws Exception {
-        Reservation reservation = reservationRepository2.findById(reservationId).get();
-        Spot spot = reservation.getSpot();
-        int bill = reservation.getNumberOfHours()*spot.getPricePerHour();
-        if(bill>amountSent){
+        Reservation reservation;
+        try {
+            reservation = reservationRepository2.findById(reservationId).get();
+
+        }catch (Exception e){
+            throw new RuntimeException();
+        }
+        Payment payment = new Payment();
+
+        // amount check and mode check
+        int bill = reservation.getSpot().getPricePerHour() * reservation.getNumberOfHours();
+
+        if(amountSent < bill){
             throw new Exception("Insufficient Amount");
         }
-
-        //PaymentMode[] modes = PaymentMode.values();
-        boolean check = false;
-        //for(PaymentMode mode1: modes){
-        //String compMode = mode.toUpperCase();
-        if(mode.equalsIgnoreCase("cash") || mode.equalsIgnoreCase("card") || mode.equalsIgnoreCase("upi")){
-            check = true;
-        }
-        //}
-        if(!check){
+        if (!mode.toUpperCase().equals("CASH") && !mode.toUpperCase().equals("CARD") && !mode.toUpperCase().equals("UPI") ) {
             throw new Exception("Payment mode not detected");
         }
 
-
-        Payment payment = new Payment();
-        //payment.setPaymentMode(PaymentMode.valueOf(mode));
-
-        if(mode.equalsIgnoreCase("cash")){
-            payment.setPaymentMode(PaymentMode.CASH);
-        }
-        else if(mode.equalsIgnoreCase("card")){
-            payment.setPaymentMode(PaymentMode.CARD);
-        }
-        else if(mode.equalsIgnoreCase("upi")){
-            payment.setPaymentMode(PaymentMode.UPI);
-        }
-
+        PaymentMode paymentMode = PaymentMode.valueOf(mode.toUpperCase());
+        payment.setPaymentMode(paymentMode);
         payment.setPaymentCompleted(true);
-
+        payment.setReservation(reservation);
         reservation.setPayment(payment);
+
 
         reservationRepository2.save(reservation);
         return payment;
